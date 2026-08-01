@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argument Analyzer</title>
+<style>
+  :root {
+    --ink: #1c2321;
+    --paper: #f7f5ef;
+    --teal: #1f6f6b;
+    --rust: #b5502f;
+    --indigo: #3b4a7a;
+    --line: rgba(28, 35, 33, 0.14);
+    --mono: "IBM Plex Mono", "Courier New", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font-family: var(--serif);
+    line-height: 1.5;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ============ shared nav bar (analyze + settings) ============ */
+  .topbar {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .topbar .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .topbar .brand h1 {
+    font-size: 21px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .topbar .brand .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--indigo);
+    opacity: 0.8;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: none;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--ink); color: var(--paper); }
+  .icon-btn svg { width: 13px; height: 13px; }
+
+  /* ============ VIEW 1: landing / hero ============ */
+  #view-landing.active {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero {
+    max-width: 640px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .hero .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--indigo);
+    margin-bottom: 18px;
+  }
+
+  .hero h1 {
+    font-size: 58px;
+    line-height: 1.05;
+    margin: 0 0 20px;
+    letter-spacing: -0.02em;
+  }
+
+  .hero p.lead {
+    font-size: 17px;
+    opacity: 0.78;
+    max-width: 480px;
+    margin: 0 auto 36px;
+  }
+
+  .hero-divider {
+    width: 60px;
+    height: 2px;
+    background: var(--ink);
+    margin: 0 auto 36px;
+  }
+
+  #get-started-btn {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 15px 34px;
+    cursor: pointer;
+  }
+  #get-started-btn:hover { background: var(--teal); border-color: var(--teal); }
+
+  .hero-footnote {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    opacity: 0.5;
+    margin-top: 20px;
+  }
+
+  /* ============ VIEW 2: analyze ============ */
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px 80px;
+  }
+
+  section.block {
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    padding: 20px 22px;
+    margin-bottom: 28px;
+  }
+
+  section.block h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: var(--mono);
+    margin: 0 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  section.block h2 .note {
+    font-family: var(--serif);
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 13px;
+    opacity: 0.6;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    font-family: var(--serif);
+    font-size: 15px;
+    padding: 12px;
+    border: 1px solid var(--ink);
+    background: #fffdf8;
+    color: var(--ink);
+  }
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .cluster-control {
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cluster-control input {
+    width: 52px;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 4px 6px;
+    border: 1px solid var(--ink);
+    background: #fffdf8;
+    color: var(--ink);
+  }
+
+  button#run-btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  button#run-btn:hover { background: var(--teal); border-color: var(--teal); }
+  button#run-btn:disabled { opacity: 0.5; cursor: default; background: var(--ink); }
+
+  #error-box {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--rust);
+    color: var(--rust);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+
+  #results-section { display: none; }
+
+  .result-card {
+    border: 1px solid var(--ink);
+    border-left-width: 4px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    background: #fffdf8;
+  }
+  .result-card.strong { border-left-color: var(--teal); }
+  .result-card.weak { border-left-color: var(--rust); }
+
+  .result-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+  }
+  .badge.strong { color: var(--teal); }
+  .badge.weak { color: var(--rust); }
+
+  .theme-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--indigo);
+    opacity: 0.85;
+  }
+
+  .sentence-text {
+    font-size: 15.5px;
+    margin-bottom: 10px;
+  }
+
+  .score-track {
+    height: 6px;
+    background: var(--line);
+    position: relative;
+  }
+  .score-fill {
+    height: 100%;
+    background: var(--indigo);
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+  .score-num {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    opacity: 0.6;
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  footer {
+    font-family: var(--mono);
+    font-size: 11px;
+    opacity: 0.5;
+    text-align: center;
+    margin-top: 40px;
+  }
+
+  /* ============ VIEW 3: settings ============ */
+  #server-status {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 5px 10px;
+    border: 1px solid var(--ink);
+    white-space: nowrap;
+  }
+  #server-status.ok { color: var(--teal); border-color: var(--teal); }
+  #server-status.bad { color: var(--rust); border-color: var(--rust); }
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+    margin: 8px 0 28px;
+  }
+  .settings-header h1 { font-size: 26px; margin: 0; }
+  .settings-header .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--indigo);
+    margin-top: 6px;
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    margin-bottom: 28px;
+  }
+
+  .kpi-card { background: var(--paper); padding: 16px 14px; }
+
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    opacity: 0.65;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-value.teal { color: var(--teal); }
+  .kpi-value.indigo { color: var(--indigo); }
+
+  .fold-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 140px;
+    padding-top: 10px;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .fold-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+  }
+
+  .fold-bar {
+    width: 100%;
+    max-width: 42px;
+    background: var(--teal);
+    height: 0px;
+    transition: height 0.6s ease;
+  }
+  .fold-bar.knn { background: var(--indigo); }
+
+  .fold-labels { display: flex; gap: 10px; margin-top: 8px; }
+  .fold-labels span {
+    flex: 1;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    opacity: 0.6;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; display: inline-block; }
+  .swatch.svm { background: var(--teal); }
+  .swatch.knn { background: var(--indigo); }
+
+  /* algorithm reference cards */
+  .algo-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  .algo-card {
+    background: var(--paper);
+    padding: 18px 20px;
+  }
+  .algo-card .algo-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .algo-card .algo-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--indigo);
+    opacity: 0.8;
+  }
+  .algo-card h3 {
+    font-size: 16px;
+    margin: 0;
+  }
+  .algo-card .algo-role {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--ink);
+    padding: 2px 8px;
+    opacity: 0.75;
+  }
+  .algo-card p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.85;
+  }
+
+  @media (max-width: 640px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .hero h1 { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ VIEW 1: LANDING ============ -->
+<div class="view active" id="view-landing">
+  <div class="hero">
+    <div class="eyebrow">TF-IDF &middot; SVM &middot; KNN &middot; SVR &middot; K-Means</div>
+    <h1>Argument Analyzer</h1>
+    <p class="lead">Paste in an essay, article, or debate transcript. Every sentence gets scored for strength, classified, and grouped by theme &mdash; live, by real models running on this page.</p>
+    <div class="hero-divider"></div>
+    <button id="get-started-btn">Get Started</button>
+    <div class="hero-footnote">nothing shown here is pre-recorded</div>
+  </div>
+</div>
+
+<!-- ============ VIEW 2: ANALYZE ============ -->
+<div class="view" id="view-analyze">
+  <div class="topbar">
+    <div class="brand" id="brand-home">
+      <h1>Argument Analyzer</h1>
+    </div>
+    <button class="icon-btn" id="open-settings-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Settings
+    </button>
+  </div>
+
+  <div class="wrap">
+    <section class="block">
+      <h2>Analyze a passage</h2>
+      <textarea id="input-text" placeholder="Paste an essay, article, or debate transcript here. Each sentence will be classified as strong or weak, scored, and grouped by theme."></textarea>
+      <div class="controls">
+        <div class="cluster-control">
+          <label for="n-clusters">Themes (clusters)</label>
+          <input type="number" id="n-clusters" value="3" min="1" max="10">
+        </div>
+        <button id="run-btn">Run Analysis</button>
+      </div>
+      <div id="error-box"></div>
+    </section>
+
+    <section class="block" id="results-section">
+      <h2>Results <span class="note" id="results-count"></span></h2>
+      <div id="results-list"></div>
+    </section>
+
+    <footer>Open Settings to see live accuracy, cross-validation, and how each model works.</footer>
+  </div>
+</div>
+
+<!-- ============ VIEW 3: SETTINGS ============ -->
+<div class="view" id="view-settings">
+  <div class="topbar">
+    <div class="brand" id="settings-brand-home">
+      <h1>Argument Analyzer</h1>
+    </div>
+    <button class="icon-btn" id="back-to-analyze-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+      Back
+    </button>
+  </div>
+
+  <div class="wrap">
+    <div class="settings-header">
+      <div>
+        <h1>Settings &amp; model details</h1>
+        <div class="subtitle">Live metrics, and how each algorithm is used</div>
+      </div>
+      <div id="server-status">connecting&hellip;</div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">SVM accuracy</div>
+        <div class="kpi-value teal" id="kpi-svm">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">KNN accuracy</div>
+        <div class="kpi-value indigo" id="kpi-knn">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Training sentences</div>
+        <div class="kpi-value" id="kpi-size">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Class balance</div>
+        <div class="kpi-value" id="kpi-balance">&mdash;</div>
+      </div>
+    </div>
+
+    <section class="block">
+      <h2>5-fold cross-validation <span class="note">accuracy per fold, SVM vs. KNN</span></h2>
+      <div class="fold-chart" id="fold-chart"></div>
+      <div class="fold-labels" id="fold-labels"></div>
+      <div class="legend">
+        <span><span class="swatch svm"></span> SVM (used to serve predictions)</span>
+        <span><span class="swatch knn"></span> KNN (comparison only)</span>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>How the analysis works</h2>
+      <div class="algo-grid">
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">01</span>
+            <h3>TF-IDF vectorization</h3>
+            <span class="algo-role">preprocessing</span>
+          </div>
+          <p>Turns every sentence into numbers before any model can use it. Each word is scored by how often it appears in that sentence versus how common it is everywhere else, so filler words like "the" or "is" score low and distinctive words score high. Stop words are removed, only single words are used as features, and the vectorizer keeps the 150 most informative words overall.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">02</span>
+            <h3>SVM &mdash; Support Vector Machine</h3>
+            <span class="algo-role">classification</span>
+          </div>
+          <p>The model that actually decides STRONG vs. WEAK. It finds the dividing line that best separates strong sentences from weak ones in TF-IDF space, choosing the widest possible gap between the two groups. A linear kernel is used because it performs well on sparse text data and stays interpretable: it's essentially learning which words push a sentence toward "strong" and which push it toward "weak."</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">03</span>
+            <h3>KNN &mdash; K-Nearest Neighbors</h3>
+            <span class="algo-role">comparison only</span>
+          </div>
+          <p>Trained on the same data as the SVM, but works differently: to classify a sentence it finds the 3 most similar training sentences and takes a majority vote of their labels. It isn't used to serve real predictions &mdash; it's trained purely so its accuracy can be compared against the SVM's.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">04</span>
+            <h3>SVR &mdash; Support Vector Regression</h3>
+            <span class="algo-role">scoring</span>
+          </div>
+          <p>A STRONG/WEAK label alone is coarse, since two very different sentences can both be labelled "strong." SVR predicts a continuous 0&ndash;1 strength score instead of a category, which is what powers the strength bar next to every sentence and lets two "strong" sentences still be ranked against each other.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">05</span>
+            <h3>K-Means clustering</h3>
+            <span class="algo-role">theming</span>
+          </div>
+          <p>The only model that never sees the strong/weak labels. Given the sentences in your submitted text, it groups them by how similar their wording is, and each group is labelled with its most distinctive word. This is what produces the theme tag shown on every sentence, useful for spotting which parts of a passage are really talking about the same idea.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-head">
+            <span class="algo-num">06</span>
+            <h3>5-fold cross-validation</h3>
+            <span class="algo-role">evaluation</span>
+          </div>
+          <p>With only 50 labelled training sentences, a single train/test split would be unreliable. Instead the data is split into 5 groups; each model trains on 4 and is tested on the 5th, five times over, so every sentence gets tested exactly once. The 5 resulting scores are averaged into the accuracy numbers shown above.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>The model trains once when the server starts, on a fixed set of 50 hand-labelled sentences. Text you submit is only ever analyzed &mdash; it never retrains the model.</footer>
+  </div>
+</div>
+
+<script>
+const API = "";
+let metricsLoaded = false;
+
+function showView(id) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+  if (id === "view-settings" && !metricsLoaded) {
+    loadMetrics();
+  }
+}
+
+document.getElementById("get-started-btn").addEventListener("click", () => showView("view-analyze"));
+document.getElementById("open-settings-btn").addEventListener("click", () => showView("view-settings"));
+document.getElementById("back-to-analyze-btn").addEventListener("click", () => showView("view-analyze"));
+document.getElementById("brand-home").addEventListener("click", () => showView("view-landing"));
+document.getElementById("settings-brand-home").addEventListener("click", () => showView("view-landing"));
+
+async function loadMetrics() {
+  const statusEl = document.getElementById("server-status");
+  try {
+    const res = await fetch(API + "/api/metrics");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+
+    metricsLoaded = true;
+    statusEl.textContent = "server online";
+    statusEl.className = "ok";
+
+    document.getElementById("kpi-svm").textContent =
+      Math.round(data.svm.cv_accuracy * 100) + "%";
+    document.getElementById("kpi-knn").textContent =
+      Math.round(data.knn.cv_accuracy * 100) + "%";
+    document.getElementById("kpi-size").textContent = data.train_size;
+    document.getElementById("kpi-balance").textContent =
+      data.strong_count + " / " + data.weak_count;
+
+    drawFoldChart(data.svm.fold_scores, data.knn.fold_scores);
+  } catch (err) {
+    statusEl.textContent = "server offline";
+    statusEl.className = "bad";
+  }
+}
+
+function drawFoldChart(svmScores, knnScores) {
+  const chart = document.getElementById("fold-chart");
+  const labels = document.getElementById("fold-labels");
+  chart.innerHTML = "";
+  labels.innerHTML = "";
+
+  const maxHeight = 120; // px
+
+  svmScores.forEach((svmVal, i) => {
+    const knnVal = knnScores[i];
+
+    const col = document.createElement("div");
+    col.className = "fold-col";
+
+    const pair = document.createElement("div");
+    pair.style.display = "flex";
+    pair.style.alignItems = "flex-end";
+    pair.style.gap = "3px";
+    pair.style.height = "100%";
+    pair.style.width = "100%";
+    pair.style.justifyContent = "center";
+
+    const svmBar = document.createElement("div");
+    svmBar.className = "fold-bar";
+    pair.appendChild(svmBar);
+
+    const knnBar = document.createElement("div");
+    knnBar.className = "fold-bar knn";
+    pair.appendChild(knnBar);
+
+    col.appendChild(pair);
+    chart.appendChild(col);
+
+    requestAnimationFrame(() => {
+      svmBar.style.height = (svmVal * maxHeight) + "px";
+      knnBar.style.height = (knnVal * maxHeight) + "px";
+    });
+
+    const label = document.createElement("span");
+    label.textContent = "fold " + (i + 1);
+    labels.appendChild(label);
+  });
+}
+
+function showError(msg) {
+  const box = document.getElementById("error-box");
+  box.textContent = msg;
+  box.style.display = "block";
+}
+
+function clearError() {
+  const box = document.getElementById("error-box");
+  box.style.display = "none";
+  box.textContent = "";
+}
+
+async function runAnalysis() {
+  clearError();
+  const text = document.getElementById("input-text").value;
+  const nClusters = parseInt(document.getElementById("n-clusters").value, 10) || 3;
+  const btn = document.getElementById("run-btn");
+  const resultsSection = document.getElementById("results-section");
+  const resultsList = document.getElementById("results-list");
+  const resultsCount = document.getElementById("results-count");
+
+  btn.disabled = true;
+  btn.textContent = "Analyzing\u2026";
+
+  try {
+    const res = await fetch(API + "/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text, n_clusters: nClusters }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.error || "Something went wrong analyzing that text.");
+      resultsSection.style.display = "none";
+      return;
+    }
+
+    resultsList.innerHTML = "";
+    resultsCount.textContent = data.count + " sentence" + (data.count === 1 ? "" : "s");
+
+    data.results.forEach((r) => {
+      const card = document.createElement("div");
+      card.className = "result-card " + (r.label === "STRONG" ? "strong" : "weak");
+
+      const top = document.createElement("div");
+      top.className = "result-top";
+
+      const badge = document.createElement("span");
+      badge.className = "badge " + (r.label === "STRONG" ? "strong" : "weak");
+      badge.textContent = r.label;
+
+      const theme = document.createElement("span");
+      theme.className = "theme-tag";
+      theme.textContent = "theme: " + r.theme;
+
+      top.appendChild(badge);
+      top.appendChild(theme);
+
+      const sentence = document.createElement("div");
+      sentence.className = "sentence-text";
+      sentence.textContent = r.sentence;
+
+      const track = document.createElement("div");
+      track.className = "score-track";
+      const fill = document.createElement("div");
+      fill.className = "score-fill";
+      track.appendChild(fill);
+
+      const scoreNum = document.createElement("div");
+      scoreNum.className = "score-num";
+      scoreNum.textContent = "strength " + r.strength_score.toFixed(2);
+
+      card.appendChild(top);
+      card.appendChild(sentence);
+      card.appendChild(track);
+      card.appendChild(scoreNum);
+      resultsList.appendChild(card);
+
+      requestAnimationFrame(() => {
+        fill.style.width = (r.strength_score * 100) + "%";
+      });
+    });
+
+    resultsSection.style.display = "block";
+  } catch (err) {
+    showError("Could not reach the server to analyze this text.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run Analysis";
+  }
+}
+
+document.getElementById("run-btn").addEventListener("click", runAnalysis);
+</script>
+</body>
+</html>
