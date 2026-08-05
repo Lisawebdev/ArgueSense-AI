@@ -104,21 +104,4 @@ git push
 
 ---
 
-## Deploy it live (Render)
-
-The `Procfile` and environment-configurable port in `app.py` are already set up
-for this.
-
-1. Push the repo to GitHub (above).
-2. Go to https://render.com, sign in with GitHub, click **New +** → **Web Service**,
-   and select this repo.
-3. Configure it:
-   - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app`
-   - **Instance Type**: Free
-4. Click **Create Web Service**. Render installs dependencies, trains the models
-   on startup, and gives you a public URL like `https://argument-analyzer.onrender.com`.
-
-The free tier spins down after inactivity and takes ~30–50 seconds to wake back up
-on the next visit — that's normal, not a bug.
+\
