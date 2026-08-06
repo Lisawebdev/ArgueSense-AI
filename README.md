@@ -28,7 +28,7 @@ argument_analyzer_app/
 │   ├── analyzer.py         # ML core: training data + SVM, KNN, SVR, K-Means
 │   ├── app.py                # Flask server: trains once, exposes the API
 │   ├── requirements.txt
-│   └── Procfile              # start command for hosting platforms
+│   └── Profile              # start command for hosting platforms
 ├── frontend/
 │   └── index.html             # landing + analyze + settings, one file, no build step
 ├── .gitignore
